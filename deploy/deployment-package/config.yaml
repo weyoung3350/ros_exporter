@@ -1,0 +1,199 @@
+# ros_exporter 统一配置文件
+# 支持多环境部署，通过environment字段区分不同场景
+
+# =============================================================================
+# 基础导出器配置
+# =============================================================================
+exporter:
+  # 数据推送间隔
+  # development: 30s, testing: 15s, production: 10s 
+  push_interval: 10s
+  
+  # 实例标识 - 支持以下配置方式：
+  # - "auto": 自动使用Linux主机名
+  # - 自定义值: 如"robot-001"、"ros2-test-vm"等
+  # - 空值: 也会自动使用主机名
+  instance: "auto"
+  
+  # 日志级别: debug, info, warn, error
+  log_level: "info"
+  
+  # HTTP服务器配置 - 提供健康检查和状态查询接口
+  http_server:
+    # 是否启用HTTP服务器
+    enabled: true
+    
+    # 监听端口 (9100是node_exporter标准端口)
+    port: 9100
+    
+    # 监听地址 (127.0.0.1仅本地访问，0.0.0.0允许外部访问)
+    address: "0.0.0.0"
+    
+    # 启用的endpoint列表
+    endpoints: ["health", "status", "metrics"]
+
+# =============================================================================
+# VictoriaMetrics配置
+# =============================================================================
+victoria_metrics:
+  # 数据推送端点
+  # 示例: http://localhost:8428/api/v1/import/prometheus  # 本地开发示例
+  endpoint: "<your_endpoint>"  # 请填写你的 VictoriaMetrics/Prometheus Pushgateway 地址
+  
+  # 请求超时时间
+  timeout: 30s
+  
+  # 额外标签 - 所有指标都会添加这些标签
+  extra_labels:
+    job: "ros_exporter"
+    # 环境标识，建议根据实际部署修改：
+    # - "development": 本地开发
+    # - "testing": ROS2测试环境  
+    # - "robot-production": 机器人生产环境
+    # - "x86-simulation": x86模拟环境
+    environment: "robot-production"
+    
+    # 可选的额外标签，根据需要取消注释
+    # robot_type: "unitree_go2"
+    # location: "field"
+    host: "<your_host>" # 请填写你的主机名或服务器IP
+  
+  # 重试配置
+  retry:
+    max_retries: 3
+    retry_delay: 1s
+    max_delay: 30s
+    backoff_rate: 2.0
+
+# =============================================================================
+# 监控收集器配置
+# =============================================================================
+collectors:
+  # ---------------------------------------------------------------------------
+  # 系统监控配置
+  # ---------------------------------------------------------------------------
+  system:
+    enabled: true
+    collectors: ["cpu", "memory", "disk", "network", "load"]
+    proc_path: "/proc"
+    sys_path: "/sys" 
+    rootfs_path: "/"
+    
+    # 温度监控配置
+    temperature:
+      # 建议配置：
+      # - 物理机器人: true
+      # - 虚拟机/容器: false
+      enabled: true
+      sensors_cmd: "sensors"
+      temp_source: "thermal_zone"  # 可选: "sensors", "thermal_zone"
+      thermal_zone: "/sys/class/thermal/thermal_zone0/temp"
+    
+    # 网络监控配置
+    network:
+      enabled: true
+      # 网络接口配置 - 根据实际环境调整:
+      # - 机器人: ["eth0", "wlan0"]
+      # - 虚拟机: ["ens160", "ens33"]  
+      # - 开发环境: [] (空表示监控所有接口)
+      interfaces: []
+      bandwidth_enabled: true
+      exclude_loopback: true
+
+  # ---------------------------------------------------------------------------  
+  # BMS电池监控配置
+  # ---------------------------------------------------------------------------
+  bms:
+    # 建议配置：
+    # - 物理机器人: true
+    # - 测试环境: false
+    enabled: true
+    
+    # 接口类型: "unitree_sdk", "serial", "canbus"
+    interface_type: "unitree_sdk"
+    
+    # 机器人类型: "g1", "go2", "b2", "auto"
+    robot_type: "auto"
+    
+    # DDS通信网络接口
+    network_interface: "eth0"
+    
+    # BMS数据更新间隔
+    update_interval: 5s
+    
+    # SDK配置文件路径（可选）
+    sdk_config_path: ""
+    
+    # 串口配置（interface_type为serial时使用）
+    device_path: "/dev/ttyUSB0"
+    baud_rate: 115200
+    
+    # CAN接口配置（interface_type为canbus时使用）
+    can_interface: "can0"
+
+  # ---------------------------------------------------------------------------
+  # ROS监控配置  
+  # ---------------------------------------------------------------------------
+  ros:
+    # 建议配置：
+    # - ROS环境: true
+    # - 纯系统监控: false
+    enabled: true
+    
+    # ROS Master URI
+    master_uri: "http://localhost:11311"
+    
+    # Topic过滤配置
+    topic_whitelist: []  # 空表示监控所有topic
+    topic_blacklist: ["/rosout", "/rosout_agg"]
+    
+    # Node过滤配置
+    node_whitelist: []   # 空表示监控所有节点
+    node_blacklist: ["/rosout"]
+    
+    # 数据抓取间隔
+    scrape_interval: 5s
+
+  # ---------------------------------------------------------------------------
+  # B2工业机器狗专用监控配置
+  # ---------------------------------------------------------------------------
+  b2:
+    # 建议配置：
+    # - B2机器人: true
+    # - 其他机器人: false
+    enabled: false
+    
+    # 机器人标识ID（用于多机器人环境）
+    robot_id: "b2-001"
+    
+    # DDS通信网络接口
+    network_interface: "eth0"
+    
+    # SDK配置文件路径（可选）
+    sdk_config_path: ""
+    
+    # 数据更新间隔
+    update_interval: 5s
+    
+    # 监控功能开关
+    monitor_joints: true    # 关节状态监控
+    monitor_sensors: true   # 传感器状态监控
+    monitor_motion: true    # 运动状态监控
+    monitor_safety: true    # 安全状态监控
+    
+    # 告警阈值配置
+    max_joint_temp: 80.0           # 关节温度上限 (°C)
+    max_load_weight: 100.0         # 负载警告阈值 (kg)
+    max_speed: 5.0                 # 速度警告阈值 (m/s)
+    collision_risk_threshold: 0.8  # 碰撞风险阈值 (0-1)
+
+# =============================================================================
+# 环境特定配置示例（注释掉，需要时取消注释并修改上面的对应配置）
+# =============================================================================
+
+# 开发环境配置示例:
+# exporter:
+#   push_interval: 30s
+#   instance: "dev-laptop"
+# victoria_metrics:
+#   endpoint: "http://localhost:8428/api/v1/import/prometheus" 

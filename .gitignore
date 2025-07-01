@@ -1,0 +1,65 @@
+# ros_exporter .gitignore
+
+# 临时目录和缓存
+tmp/
+*.tmp
+*.temp
+*.cache
+
+# 编译产物和构建文件
+ros_exporter
+ros_exporter-*
+test_simple_cgo
+rebot_control
+*.exe
+dist/
+build/
+*.tar.gz
+*.zip
+*.o
+*.so
+*.dylib
+*.dll
+
+# 开发环境和IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# 日志和调试文件
+*.log
+*.out
+logs/
+debug
+debug.test
+
+# Go相关
+go.work
+go.work.sum
+vendor/
+*.test
+*.cover
+coverage.txt
+coverage.html
+
+# 配置和敏感信息
+config.secret.yaml
+*.key
+*.pem
+.env.local
+
+# 备份文件
+*.bak
+*.backup
+*.old 
