@@ -1,0 +1,20 @@
+{
+  "registry-mirrors": [
+    "https://docker.xuanyuan.me",
+    "https://docker.nju.edu.cn",
+    "https://docker.m.daocloud.io",
+    "https://dockerhub.azk8s.cn"
+  ],
+  "insecure-registries": [],
+  "debug": false,
+  "experimental": false,
+  "features": {
+    "buildkit": true
+  },
+  "builder": {
+    "gc": {
+      "enabled": true,
+      "defaultKeepStorage": "20GB"
+    }
+  }
+} 

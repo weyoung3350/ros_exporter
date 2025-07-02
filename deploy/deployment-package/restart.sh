@@ -59,7 +59,7 @@ detect_executable() {
     return 0
 }
 
-# 停止导出器
+# 停止Exporter
 stop_exporter() {
     log_info "正在停止 ros_exporter..."
     
@@ -93,7 +93,7 @@ stop_exporter() {
     # 方法2: 通过进程名停止所有相关进程
     pids=$(pgrep -f "ros_exporter.*-config" 2>/dev/null || true)
     if [ -n "$pids" ]; then
-        log_info "发现运行中的导出器进程: $pids"
+        log_info "发现运行中的Exporter进程: $pids"
         
         # 逐个停止进程
         for pid in $pids; do
@@ -124,9 +124,9 @@ stop_exporter() {
             fi
         done
         
-        log_success "所有导出器进程已处理完毕"
+        log_success "所有Exporter进程已处理完毕"
     else
-        log_info "未发现运行中的导出器进程"
+        log_info "未发现运行中的Exporter进程"
     fi
     
     # 最终清理检查
@@ -144,7 +144,7 @@ stop_exporter() {
     rm -f "$PID_FILE"
 }
 
-# 启动导出器
+# 启动Exporter
 start_exporter() {
     log_info "正在启动 ros_exporter..."
     
@@ -160,7 +160,7 @@ start_exporter() {
         chmod +x "$EXECUTABLE"
     fi
     
-    # 启动导出器（后台运行）
+    # 启动Exporter（后台运行）
     log_info "启动命令: ./$EXECUTABLE -config $CONFIG_FILE"
     
     # 启动并记录PID
@@ -195,7 +195,7 @@ start_exporter() {
     fi
 }
 
-    # 检查导出器状态
+    # 检查Exporter状态
 check_status() {
     pids=$(pgrep -f "ros_exporter.*-config" 2>/dev/null || true)
     if [ -n "$pids" ]; then

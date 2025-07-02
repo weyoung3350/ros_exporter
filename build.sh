@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ros_exporter 构建脚本
-# 用于编译、打包和部署监控导出器
+# 用于编译、打包和部署Exporter
 
 set -e
 

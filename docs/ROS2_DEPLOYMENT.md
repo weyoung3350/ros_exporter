@@ -179,7 +179,7 @@ node_cpu_temperature_celsius{instance="ros2-vm-test",sensor="cpu"}
 node_network_bandwidth_up_mbps{instance="ros2-vm-test",device="ens33"}
 node_network_bandwidth_down_mbps{instance="ros2-vm-test",device="ens33"}
 
-# 导出器健康指标
+# Exporter健康指标
 ros_exporter_up{instance="ros2-vm-test",version="1.0.0"}
 ```
 

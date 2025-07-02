@@ -21,7 +21,7 @@ log_success() { echo "[SUCCESS] $1"; }
 log_warning() { echo "[WARNING] $1"; }
 log_error() { echo "[ERROR] $1"; }
 
-# 停止导出器
+# 停止Exporter
 stop_exporter() {
     log_info "正在停止 ros_exporter..."
     
@@ -55,7 +55,7 @@ stop_exporter() {
     # 方法2: 通过进程名停止所有相关进程
     pids=$(pgrep -f "ros_exporter.*-config" 2>/dev/null || true)
     if [ -n "$pids" ]; then
-        log_info "发现运行中的导出器进程: $pids"
+        log_info "发现运行中的Exporter进程: $pids"
         
         for pid in $pids; do
             log_info "停止进程 PID: $pid"
@@ -68,16 +68,16 @@ stop_exporter() {
             fi
         done
         
-        log_success "所有导出器进程已处理完毕"
+        log_success "所有Exporter进程已处理完毕"
     else
-        log_info "未发现运行中的导出器进程"
+        log_info "未发现运行中的Exporter进程"
     fi
     
     # 确保PID文件被清理
     rm -f "$PID_FILE"
 }
 
-# 启动导出器
+# 启动Exporter
 start_exporter() {
     log_info "正在启动 ros_exporter..."
     
@@ -96,7 +96,7 @@ start_exporter() {
     # 确保日志目录存在
     mkdir -p "$LOG_DIR"
     
-    # 启动导出器（后台运行）
+    # 启动Exporter（后台运行）
     log_info "启动命令: ./$EXPORTER_NAME -config $CONFIG_FILE"
     
     # 启动并记录PID

@@ -1,0 +1,67 @@
+# Docker构建忽略文件
+# 优化构建性能，减少镜像大小
+
+# Git相关
+.git
+.gitignore
+.gitattributes
+
+# Docker相关
+docker/
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# 开发工具
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.log
+*.pid
+
+# 构建产物
+ros_exporter
+*.exe
+*.dll
+*.so
+
+# 文档
+docs/
+README.md
+*.md
+
+# 脚本
+scripts/
+deploy/
+*.sh
+
+# 测试文件
+*_test.go
+test*
+
+# 其他配置
+.env
+.env.*
+config.yaml
+*.yaml
+*.yml
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# IDE生成的文件
+*.code-workspace 

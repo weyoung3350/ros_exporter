@@ -32,7 +32,7 @@ log_error() {
     echo "[ERROR] $1"
 }
 
-# 停止导出器进程
+# 停止Exporter进程
 stop_exporter() {
     log_info "正在停止 ros_exporter..."
     
@@ -77,7 +77,7 @@ stop_exporter() {
     # 方法2: 通过进程名停止所有相关进程
     pids=$(pgrep -f "ros_exporter.*-config" 2>/dev/null || true)
     if [ -n "$pids" ]; then
-        log_info "发现运行中的导出器进程: $pids"
+        log_info "发现运行中的Exporter进程: $pids"
         
         # 逐个停止进程
         for pid in $pids; do

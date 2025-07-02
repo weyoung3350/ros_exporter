@@ -1,6 +1,6 @@
 # ros_exporter
 
-一个统一的ROS指标导出器，基于Go语言开发，支持系统指标、BMS电池管理和ROS监控，主动推送数据到VictoriaMetrics。
+一个统一的ROS指标Exporter，基于Go语言开发，支持系统指标、BMS电池管理和ROS监控，主动推送数据到VictoriaMetrics。
 
 ## 🎯 核心特性
 
@@ -23,7 +23,7 @@ ros_exporter/
 ├── build.sh                  # 构建脚本
 ├── internal/                 # 核心代码
 │   ├── config/               # 配置管理
-│   ├── exporter/            # 核心导出器
+│   ├── exporter/            # 核心Exporter
 │   ├── client/               # VictoriaMetrics客户端
 │   └── collectors/           # 指标收集器
 ├── scripts/                  # 实用脚本
@@ -155,7 +155,7 @@ collectors:
 ```
 
 
-### 4. 运行导出器
+### 4. 运行Exporter
 
 ```bash
 # 使用默认配置
@@ -211,11 +211,11 @@ collectors:
 | `ros_parameters_total` | Gauge | 参数服务器参数数量 |
 | `ros_master_status` | Gauge | ROS Master状态 |
 
-### 导出器指标 (Exporter Metrics)
+### Exporter指标 (Exporter Metrics)
 
 | 指标名称 | 类型 | 说明 |
 |---------|------|------|
-| `ros_exporter_up` | Gauge | 导出器运行状态 |
+| `ros_exporter_up` | Gauge | Exporter运行状态 |
 | `ros_exporter_collection_duration_seconds` | Gauge | 指标收集耗时 |
 | `ros_exporter_last_collection_timestamp` | Gauge | 最后收集时间戳 |
 

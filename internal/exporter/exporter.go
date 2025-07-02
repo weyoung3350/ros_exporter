@@ -32,7 +32,7 @@ type Exporter struct {
 	mu      sync.RWMutex
 }
 
-// New 创建新的监控导出器
+// New 创建新的Exporter
 func New(cfg *config.Config) (*Exporter, error) {
 	// 创建VictoriaMetrics客户端
 	vmClient := client.NewVMClient(&cfg.VictoriaMetrics)
@@ -59,7 +59,7 @@ func New(cfg *config.Config) (*Exporter, error) {
 	return exporter, nil
 }
 
-// Start 启动监控导出器
+// Start 启动Exporter
 func (e *Exporter) Start(ctx context.Context) error {
 	e.mu.Lock()
 	if e.running {
@@ -69,7 +69,7 @@ func (e *Exporter) Start(ctx context.Context) error {
 	e.running = true
 	e.mu.Unlock()
 
-	log.Printf("监控导出器启动中...")
+	log.Printf("Exporter启动中...")
 
 	// 启动HTTP服务器
 	e.startHTTPServer()
@@ -96,7 +96,7 @@ func (e *Exporter) Start(ctx context.Context) error {
 	}
 }
 
-// Stop 停止监控导出器
+// Stop 停止Exporter
 func (e *Exporter) Stop(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -105,7 +105,7 @@ func (e *Exporter) Stop(ctx context.Context) error {
 		return nil
 	}
 
-	log.Printf("停止监控导出器...")
+	log.Printf("停止Exporter...")
 	e.running = false
 
 	// 停止HTTP服务器
@@ -123,7 +123,7 @@ func (e *Exporter) Stop(ctx context.Context) error {
 		log.Printf("关闭B2收集器失败: %v", err)
 	}
 
-	log.Printf("监控导出器已停止")
+	log.Printf("Exporter已停止")
 	return nil
 }
 
@@ -160,7 +160,7 @@ func (e *Exporter) collectAndPush(ctx context.Context) error {
 		allMetrics = append(allMetrics, b2Metrics...)
 	}
 
-	// 添加导出器自身的指标
+	// 添加Exporter自身的指标
 	exporterMetrics := e.generateExporterMetrics(startTime)
 	allMetrics = append(allMetrics, exporterMetrics...)
 
@@ -197,7 +197,7 @@ func (e *Exporter) collectAndPush(ctx context.Context) error {
 	return nil
 }
 
-// generateExporterMetrics 生成导出器自身的指标
+// generateExporterMetrics 生成Exporter自身的指标
 func (e *Exporter) generateExporterMetrics(startTime time.Time) []client.Metric {
 	now := time.Now()
 	labels := map[string]string{
@@ -255,7 +255,7 @@ func (e *Exporter) healthCheck(ctx context.Context) error {
 	return nil
 }
 
-// GetStatus 获取导出器状态
+// GetStatus 获取Exporter状态
 func (e *Exporter) GetStatus() ExporterStatus {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -275,7 +275,7 @@ func (e *Exporter) GetStatus() ExporterStatus {
 	}
 }
 
-// ExporterStatus 导出器状态
+// ExporterStatus Exporter状态
 type ExporterStatus struct {
 	Running         bool            `json:"running"`
 	Instance        string          `json:"instance"`

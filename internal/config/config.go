@@ -15,7 +15,7 @@ type Config struct {
 	Collectors      CollectorsConfig      `yaml:"collectors"`
 }
 
-// ExporterConfig 导出器配置
+// ExporterConfig Exporter配置
 type ExporterConfig struct {
 	PushInterval time.Duration    `yaml:"push_interval"`
 	Instance     string           `yaml:"instance"`

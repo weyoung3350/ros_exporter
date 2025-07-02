@@ -84,7 +84,7 @@ check_running() {
     return 1
 }
 
-# 启动导出器
+# 启动Exporter
 start_exporter() {
     log_info "正在启动 ros_exporter..."
     
@@ -101,7 +101,7 @@ start_exporter() {
         chmod +x "$EXECUTABLE"
     fi
     
-    # 启动导出器（后台运行，与终端分离）
+    # 启动Exporter（后台运行，与终端分离）
     log_info "启动命令: ./$EXECUTABLE -config $CONFIG_FILE"
     log_info "后台启动中，进程将与终端分离..."
     

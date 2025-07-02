@@ -50,10 +50,10 @@ func main() {
 		log.Printf("使用命令行指定的网络接口: %v", interfaceList)
 	}
 
-	// 创建监控导出器
+	// 创建Exporter
 	exporterInstance, err := exporter.New(cfg)
 	if err != nil {
-		log.Fatalf("创建监控导出器失败: %v", err)
+		log.Fatalf("创建Exporter失败: %v", err)
 	}
 
 	// 创建上下文和信号处理
@@ -64,7 +64,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
-	// 启动监控导出器
+	// 启动Exporter
 	log.Printf("启动 %s %s", AppName, AppVersion)
 	log.Printf("推送目标: %s", cfg.VictoriaMetrics.Endpoint)
 	log.Printf("推送间隔: %v", cfg.Exporter.PushInterval)
@@ -93,7 +93,7 @@ func main() {
 
 	go func() {
 		if err := exporterInstance.Start(ctx); err != nil {
-			log.Printf("监控导出器运行错误: %v", err)
+			log.Printf("Exporter运行错误: %v", err)
 			cancel()
 		}
 	}()
@@ -107,12 +107,12 @@ func main() {
 	}
 
 	// 优雅退出
-	log.Printf("正在停止监控导出器...")
+	log.Printf("正在停止Exporter...")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer shutdownCancel()
 
 	if err := exporterInstance.Stop(shutdownCtx); err != nil {
-		log.Printf("停止监控导出器时出错: %v", err)
+		log.Printf("停止Exporter时出错: %v", err)
 	}
 
 	log.Printf("%s 已退出", AppName)

@@ -1,0 +1,114 @@
+version: '3.8'
+
+# ROS Exporter 开发测试环境 - 国内镜像源版本
+# 支持 macOS Apple 芯片 (arm64)
+
+services:
+  # =============================================================================
+  # VictoriaMetrics 时序数据库
+  # =============================================================================
+  victoria-metrics:
+    image: docker.xuanyuan.me/victoriametrics/victoria-metrics:latest
+    container_name: victoria-metrics
+    platform: linux/amd64  # 使用amd64架构（Rosetta模拟）
+    restart: unless-stopped
+    ports:
+      - "8428:8428"  # VictoriaMetrics HTTP API
+    volumes:
+      - vm_data:/victoria-metrics-data
+    command:
+      - '--storageDataPath=/victoria-metrics-data'
+      - '--httpListenAddr=:8428'
+      - '--retentionPeriod=30d'  # 数据保留30天
+      - '--loggerLevel=INFO'
+    networks:
+      - ros_dev_network
+    healthcheck:
+      test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --spider http://localhost:8428/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =============================================================================
+  # Ubuntu ROS1 环境
+  # =============================================================================
+  ubuntu-ros1:
+    image: docker.xuanyuan.me/osrf/ros:noetic-desktop-full
+    container_name: ubuntu-ros1
+    platform: linux/amd64  # 使用amd64架构（Rosetta模拟）
+    restart: unless-stopped
+    ports:
+      - "11311:11311"  # ROS Master端口
+    environment:
+      - ROS_MASTER_URI=http://localhost:11311
+      - ROS_HOSTNAME=ubuntu-ros1
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # X11转发（可选）
+    networks:
+      - ros_dev_network
+    command: >
+      bash -c "
+        source /opt/ros/noetic/setup.bash &&
+        roscore &
+        sleep 5 &&
+        echo 'ROS Master started successfully' &&
+        # 启动一些示例节点用于测试
+        rostopic pub /test_topic std_msgs/String 'data: Hello ROS!' -r 1 &
+        rosrun rosgraph_msgs rosgraph_msgs &
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: ["CMD", "bash", "-c", "source /opt/ros/noetic/setup.bash && rostopic list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  ros-exporter:
+    build:
+      context: ..  # 从项目根目录构建
+      dockerfile: docker/Dockerfile.china  # 使用国内镜像源版本
+      platforms:
+        - linux/arm64  # 使用arm64架构（Apple Silicon原生）
+    container_name: ros-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"  # 监控指标端口
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro  # 只读挂载配置文件
+    networks:
+      - ros_dev_network
+    depends_on:
+      victoria-metrics:
+        condition: service_healthy
+      ubuntu-ros1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# =============================================================================
+# 网络配置
+# =============================================================================
+networks:
+  ros_dev_network:
+    driver: bridge
+    name: ros_dev_network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# =============================================================================
+# 数据卷配置
+# =============================================================================
+volumes:
+  vm_data:
+    name: ros_dev_vm_data
+    driver: local 

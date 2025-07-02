@@ -1,0 +1,113 @@
+# ROS Exporter Docker开发环境配置
+# 针对容器化环境优化的监控配置
+
+# =============================================================================
+# Exporter配置
+# =============================================================================
+exporter:
+  # 开发环境推送间隔（30秒）
+  push_interval: 30s
+  
+  # 容器实例标识
+  instance: "docker-dev"
+  
+  # 开发环境日志级别
+  log_level: "debug"
+  
+  # HTTP服务器配置
+  http_server:
+    enabled: true
+    port: 9100
+    # 容器内监听所有接口
+    address: "0.0.0.0"
+    endpoints: ["health", "status", "metrics"]
+
+# =============================================================================
+# VictoriaMetrics配置
+# =============================================================================
+victoria_metrics:
+  # 本地运行时连接到容器化的VictoriaMetrics
+  endpoint: "http://localhost:8428/api/v1/import/prometheus"
+  timeout: 30s
+  
+  # 开发环境标签
+  extra_labels:
+    job: "ros_exporter"
+    environment: "docker-development"
+    platform: "docker"
+    host: "docker-dev"
+  
+  # 重试配置
+  retry:
+    max_retries: 3
+    retry_delay: 1s
+    max_delay: 30s
+    backoff_rate: 2.0
+
+# =============================================================================
+# 监控收集器配置
+# =============================================================================
+collectors:
+  # ---------------------------------------------------------------------------
+  # 系统监控配置（容器化环境）
+  # ---------------------------------------------------------------------------
+  system:
+    enabled: true
+    collectors: ["cpu", "memory", "disk", "network", "load"]
+    proc_path: "/proc"
+    sys_path: "/sys" 
+    rootfs_path: "/"
+    
+    # 容器环境禁用温度监控
+    temperature:
+      enabled: false
+    
+    # 网络监控配置
+    network:
+      enabled: true
+      # 容器内默认网络接口
+      interfaces: ["eth0"]
+      bandwidth_enabled: true
+      exclude_loopback: true
+    
+    # 简化进程监控（开发环境）
+    process:
+      enabled: true
+      monitor_all: false
+      include_names: ["ros_exporter", "roscore", "rosmaster"]
+      exclude_names: ["kthreadd", "ksoftirqd*", "migration*", "rcu_*"]
+      include_users: []
+      min_cpu_percent: 1.0
+      min_memory_mb: 10.0
+      collect_detailed: false
+
+  # ---------------------------------------------------------------------------  
+  # BMS电池监控配置（开发环境禁用）
+  # ---------------------------------------------------------------------------
+  bms:
+    enabled: false
+
+  # ---------------------------------------------------------------------------
+  # ROS监控配置（连接到ubuntu-ros1容器）
+  # ---------------------------------------------------------------------------
+  ros:
+    enabled: true  # 启用ROS监控，连接到容器化的ROS环境
+    # 连接到ubuntu-ros1容器的ROS Master
+    master_uri: "http://localhost:11311"
+    
+    # Topic过滤配置
+    topic_whitelist: []
+    topic_blacklist: ["/rosout", "/rosout_agg"]
+    
+    # Node过滤配置
+    node_whitelist: []
+    node_blacklist: ["/rosout"]
+    
+    # 开发环境抓取间隔
+    scrape_interval: 10s
+
+  # ---------------------------------------------------------------------------
+  # B2工业机器狗专用监控配置（开发环境禁用）
+  # ---------------------------------------------------------------------------
+  b2:
+    enabled: false 

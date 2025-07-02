@@ -17,7 +17,7 @@
 6. **实时网络带宽** - ros_exporter特有的带宽计算指标
 
 #### 🤖 Robot Exporter状态
-7. **Exporter状态仪表盘** - 监控导出器健康状态
+7. **Exporter状态仪表盘** - Exporter健康状态监控
 8. **CPU时间分布饼图** - CPU各模式时间占比
 9. **Exporter性能指标** - 推送指标数量和耗时
 
