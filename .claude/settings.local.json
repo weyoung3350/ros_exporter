@@ -12,7 +12,14 @@
       "Bash(./ros_exporter_nocgo:*)",
       "Bash(chmod:*)",
       "Bash(./test_rosmaster_x3.sh:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(./deploy_package.sh:*)",
+      "Bash(scp:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(ssh:*)",
+      "Bash(brew install:*)",
+      "Bash(expect:*)"
     ],
     "deny": []
   }

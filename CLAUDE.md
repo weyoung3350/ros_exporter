@@ -1,6 +1,45 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+======设备介绍======
+	ROSMASTER X3 标准版
+	树莓派5-8GB
+	Astra Pro Plus 深度相机
+	思岚A1M8激光雷达
+	电池组（12.6V，6000mAh）
+	64GTF卡
+	IP: 192.168.31.109  用户pi 密码yahboom	
+
+======ROSMASTER X3 标准版物品清单======
+	摇臂悬挂架
+	防撞架
+	电机底板
+	车架主控固定板
+	摇臂挂支架
+	灯条固定板
+	码盘底板
+	ROS小车扩展板
+	USB HUB扩展板
+	电机4
+	OLED屏扩展板
+	联轴器
+	LED灯条
+	排线若干
+	数据线
+	螺丝刀
+	游戏手柄+7号电池
+	电池盒
+	USB 3.0
+	电池充电器
+	零件包
+	手机支架
+	塑料轮6（含驱动轮4、从动轮2）
+	麦克纳姆轮4
+
+======语言交互包======
+	语音交互模块
+	Type-C数据线
+	语音蜂鸣包
+	喇叭
 
 ## Essential Development Commands
 

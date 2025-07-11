@@ -88,7 +88,7 @@ journalctl -u ros_exporter -f
 - **应用目录**: `/opt/app/ros_exporter/`
 - **应用配置**: `/opt/app/ros_exporter/config.yaml`
 - **应用日志**: `/opt/logs/ros_exporter/`
-- **管理脚本**: `/opt/app/ros_exporter/scripts/`
+- **管理脚本**: `/opt/app/ros_exporter/`
 
 ### 关键配置项
 
