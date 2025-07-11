@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus 自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # ros-exporter 监控（如果运行在主机上）
+  - job_name: 'ros-exporter'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+    scrape_interval: 10s
+    metrics_path: /metrics
+
+  # VictoriaMetrics 监控
+  - job_name: 'victoria-metrics'
+    static_configs:
+      - targets: ['victoria-metrics:8428']
+
+remote_write:
+  # 将数据写入 VictoriaMetrics
+  - url: http://victoria-metrics:8428/api/v1/write
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+      max_shards: 30 

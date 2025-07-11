@@ -1,0 +1,135 @@
+# ros_exporter 机器人部署配置
+# 目标系统：Debian GNU/Linux 12 (bookworm) ARM64
+# 特点：无ROS环境，主要网络接口wlan0
+
+# =============================================================================
+# Exporter配置
+# =============================================================================
+exporter:
+  # 数据推送间隔 - 机器人环境使用较快的间隔
+  push_interval: 10s
+  
+  # 实例标识 - 使用机器人主机名
+  instance: "auto"
+  
+  # 日志级别
+  log_level: "info"
+  
+  # HTTP服务器配置
+  http_server:
+    # 启用HTTP服务器提供监控端点
+    enabled: true
+    
+    # 使用标准端口
+    port: 9100
+    
+    # 允许外部访问以便监控
+    address: "0.0.0.0"
+    
+    # 启用所有端点
+    endpoints: ["health", "status", "metrics"]
+
+# =============================================================================
+# VictoriaMetrics配置
+# =============================================================================
+victoria_metrics:
+  # 数据推送端点 - 需要配置实际的监控系统地址
+  endpoint: "http://localhost:8428/api/v1/import/prometheus"
+  
+  # 请求超时时间
+  timeout: 30s
+  
+  # 额外标签
+  extra_labels:
+    job: "ros_exporter"
+    environment: "robot-production"
+    robot_type: "yahboom_robot"
+    location: "field"
+    host: "192.168.31.109"
+  
+  # 重试配置
+  retry:
+    max_retries: 3
+    retry_delay: 1s
+    max_delay: 30s
+    backoff_rate: 2.0
+
+# =============================================================================
+# 监控收集器配置
+# =============================================================================
+collectors:
+  # ---------------------------------------------------------------------------
+  # 系统监控配置 - 启用完整的系统监控
+  # ---------------------------------------------------------------------------
+  system:
+    enabled: true
+    collectors: ["cpu", "memory", "disk", "network", "load", "process"]
+    proc_path: "/proc"
+    sys_path: "/sys" 
+    rootfs_path: "/"
+    
+    # 温度监控配置 - 对于ARM设备很重要
+    temperature:
+      enabled: true
+      sensors_cmd: "sensors"
+      temp_source: "thermal_zone"
+      thermal_zone: "/sys/class/thermal/thermal_zone0/temp"
+    
+    # 网络监控配置 - 重点监控WiFi接口
+    network:
+      enabled: true
+      # 明确指定主要网络接口
+      interfaces: ["wlan0", "eth0", "docker0"]
+      bandwidth_enabled: true
+      exclude_loopback: true
+    
+    # 进程监控配置 - 监控关键进程
+    process:
+      enabled: true
+      monitor_all: false
+      
+      # 包含重要进程
+      include_names: ["ros_exporter", "systemd", "sshd", "NetworkManager", "wpa_supplicant", "docker*"]
+      
+      # 排除内核线程
+      exclude_names: ["kthreadd", "ksoftirqd*", "migration*", "rcu_*", "watchdog*"]
+      
+      include_users: []
+      
+      # 资源阈值
+      min_cpu_percent: 0.5
+      min_memory_mb: 10.0
+      
+      # 不收集过于详细的信息以减少开销
+      collect_detailed: false
+
+  # ---------------------------------------------------------------------------  
+  # BMS电池监控配置 - 禁用，因为这不是Unitree机器人
+  # ---------------------------------------------------------------------------
+  bms:
+    enabled: false
+    interface_type: "unitree_sdk"
+    robot_type: "auto"
+    network_interface: "wlan0"
+    update_interval: 5s
+
+  # ---------------------------------------------------------------------------
+  # ROS监控配置 - 禁用，因为系统没有安装ROS
+  # ---------------------------------------------------------------------------
+  ros:
+    enabled: false
+    master_uri: "http://localhost:11311"
+    topic_whitelist: []
+    topic_blacklist: []
+    node_whitelist: []
+    node_blacklist: []
+    scrape_interval: 5s
+
+  # ---------------------------------------------------------------------------
+  # B2工业机器狗专用监控配置 - 禁用
+  # ---------------------------------------------------------------------------
+  b2:
+    enabled: false
+    robot_id: "b2-001"
+    network_interface: "wlan0"
+    update_interval: 5s 
