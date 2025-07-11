@@ -32,7 +32,7 @@
       "type": "row"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -113,7 +113,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -174,7 +174,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -257,7 +257,7 @@
       "type": "row"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -338,7 +338,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -438,7 +438,7 @@
       "type": "row"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -519,7 +519,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -600,7 +600,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -706,7 +706,7 @@
       "type": "row"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -767,7 +767,7 @@
       "type": "piechart"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -873,7 +873,7 @@
       "type": "row"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -934,7 +934,7 @@
       "type": "gauge"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -996,7 +996,7 @@
       "type": "stat"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1058,7 +1058,7 @@
       "type": "stat"
     },
     {
-      "datasource": "VictoriaMetrics",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1162,7 +1162,7 @@
           "text": "rosmaster-x3-001",
           "value": "rosmaster-x3-001"
         },
-        "datasource": "VictoriaMetrics",
+        "datasource": "Prometheus",
         "definition": "label_values(rosmaster_battery_soc_percent, instance)",
         "hide": 0,
         "includeAll": false,

@@ -13,7 +13,7 @@ exporter:
     endpoints: ["health", "status", "metrics"]
 
 victoria_metrics:
-  endpoint: "http://192.168.1.100:8428/api/v1/import/prometheus"  # 修改为实际的VictoriaMetrics地址
+  endpoint: "http://localhost:8428/api/v1/import/prometheus"  # 本机VictoriaMetrics
   timeout: 30s
   extra_labels:
     job: "ros_exporter"
