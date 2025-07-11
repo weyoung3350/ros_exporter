@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(go build:*)",
+      "Bash(sed:*)",
+      "Bash(./ros_exporter_test:*)",
+      "Bash(./ros_exporter_nocgo:*)",
+      "Bash(chmod:*)",
+      "Bash(./test_rosmaster_x3.sh:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}

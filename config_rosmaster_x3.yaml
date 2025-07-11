@@ -1,0 +1,142 @@
+# ROSMaster-X3机器人专用配置文件
+# 适用于树莓派5 + 思岚激光雷达 + 深度相机的ROSMaster-X3机器人
+
+exporter:
+  push_interval: 10s  # ROSMaster-X3采用较高频率推送
+  instance: "rosmaster-x3-robot"
+  log_level: "info"
+  
+  http_server:
+    enabled: true
+    port: 9100
+    address: "0.0.0.0"  # 允许外部访问
+    endpoints: ["health", "status", "metrics"]
+
+victoria_metrics:
+  endpoint: "http://192.168.1.100:8428/api/v1/import/prometheus"  # 修改为实际的VictoriaMetrics地址
+  timeout: 30s
+  extra_labels:
+    job: "ros_exporter"
+    robot_type: "rosmaster_x3"
+    location: "lab"  # 可根据实际部署位置修改
+  retry:
+    max_retries: 5
+    retry_delay: 2s
+    max_delay: 60s
+    backoff_rate: 2.0
+
+collectors:
+  # 系统监控 - 针对树莓派5优化
+  system:
+    enabled: true
+    collectors: ["cpu", "memory", "disk", "network", "load"]
+    proc_path: "/proc"
+    sys_path: "/sys"
+    rootfs_path: "/"
+    
+    # 树莓派5温度监控
+    temperature:
+      enabled: true
+      sensors_cmd: "vcgencmd measure_temp"  # 树莓派专用温度命令
+      temp_source: "thermal_zone"
+      thermal_zone: "/sys/class/thermal/thermal_zone0/temp"
+    
+    # 网络监控 - 典型WiFi和以太网
+    network:
+      enabled: true
+      interfaces: ["wlan0", "eth0"]  # ROSMaster-X3常用网络接口
+      bandwidth_enabled: true
+      exclude_loopback: true
+    
+    # 进程监控 - 关注ROS相关进程
+    process:
+      enabled: true
+      monitor_all: false
+      include_names: ["rosmaster", "roscore", "roslaunch", "python.*ros.*", "move_base", "amcl", "gmapping"]
+      exclude_names: ["kthreadd", "ksoftirqd.*", "migration.*", "rcu_.*"]
+      include_users: ["pi", "ros"]  # 典型用户
+      min_cpu_percent: 1.0
+      min_memory_mb: 10.0
+      collect_detailed: true
+
+  # BMS监控 - 12.6V电池组
+  bms:
+    enabled: true
+    interface_type: "serial"  # ROSMaster-X3通常使用串口连接BMS
+    robot_type: "rosmaster_x3"
+    network_interface: "wlan0"
+    update_interval: 5s
+    device_path: "/dev/ttyUSB0"  # 根据实际连接调整
+    baud_rate: 9600  # 常见BMS串口波特率
+    can_interface: "can0"
+
+  # 通用ROS监控
+  ros:
+    enabled: true
+    master_uri: "http://localhost:11311"
+    topic_whitelist: []  # 空表示监控所有topic
+    topic_blacklist: ["/rosout", "/rosout_agg", "/tf_static", "/clock"]
+    node_whitelist: []
+    node_blacklist: ["/rosout"]
+    scrape_interval: 3s  # 较高频率监控
+
+  # B2收集器 - 禁用（不是B2机器人）
+  b2:
+    enabled: false
+
+  # ROSMaster-X3专用收集器
+  rosmaster_x3:
+    enabled: true
+    master_uri: "http://localhost:11311"
+    robot_id: "rosmaster-x3-001"
+    update_interval: 5s
+
+    # 监控配置 - 根据硬件配置启用
+    monitor_motors: true      # 4个驱动电机
+    monitor_battery: true     # 12.6V电池组
+    monitor_lidar: true       # 思岚A1M8激光雷达
+    monitor_imu: true         # IMU传感器
+    monitor_navigation: true  # 导航状态
+    monitor_camera: true      # Astra Pro Plus深度相机
+
+    # 话题过滤 - ROSMaster-X3典型话题
+    topic_whitelist: [
+      # 运动控制
+      "/cmd_vel",
+      "/odom", 
+      "/joint_states",
+      
+      # 传感器数据
+      "/scan",              # 激光雷达
+      "/imu",               # IMU数据
+      "/camera/rgb/image_raw",     # RGB相机
+      "/camera/depth/image_raw",   # 深度相机
+      
+      # 导航相关
+      "/amcl_pose",
+      "/move_base/goal",
+      "/move_base/status",
+      "/map",
+      "/path",
+      
+      # 电池和系统状态
+      "/rosmaster/battery_state",
+      "/rosmaster/motor_state",
+      "/rosmaster/system_state"
+    ]
+    
+    topic_blacklist: [
+      "/rosout", 
+      "/rosout_agg", 
+      "/tf_static",
+      "/clock",
+      "/diagnostics_agg"  # 过于频繁的诊断信息
+    ]
+
+    # 告警阈值 - 根据ROSMaster-X3规格设置
+    max_motor_temp: 70.0        # 电机温度上限70°C
+    max_battery_temp: 55.0      # 电池温度上限55°C  
+    min_battery_voltage: 10.5   # 电池低电压保护10.5V
+    min_battery_soc: 15.0       # 电池低电量保护15%
+    max_linear_velocity: 1.5    # 最大线性速度1.5m/s
+    max_angular_velocity: 1.5   # 最大角速度1.5rad/s

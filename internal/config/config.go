@@ -49,10 +49,11 @@ type RetryConfig struct {
 
 // CollectorsConfig 收集器配置
 type CollectorsConfig struct {
-	System SystemCollectorConfig `yaml:"system"`
-	BMS    BMSCollectorConfig    `yaml:"bms"`
-	ROS    ROSCollectorConfig    `yaml:"ros"`
-	B2     B2CollectorConfig     `yaml:"b2"`
+	System      SystemCollectorConfig      `yaml:"system"`
+	BMS         BMSCollectorConfig         `yaml:"bms"`
+	ROS         ROSCollectorConfig         `yaml:"ros"`
+	B2          B2CollectorConfig          `yaml:"b2"`
+	ROSMasterX3 ROSMasterX3CollectorConfig `yaml:"rosmaster_x3"`
 }
 
 // SystemCollectorConfig 系统收集器配置
@@ -144,6 +145,34 @@ type B2CollectorConfig struct {
 	MaxLoadWeight          float64 `yaml:"max_load_weight"`          // 最大负载阈值 (kg)
 	MaxSpeed               float64 `yaml:"max_speed"`                // 最大速度阈值 (m/s)
 	CollisionRiskThreshold float64 `yaml:"collision_risk_threshold"` // 碰撞风险阈值
+}
+
+// ROSMasterX3CollectorConfig ROSMaster-X3收集器配置
+type ROSMasterX3CollectorConfig struct {
+	Enabled       bool          `yaml:"enabled"`
+	MasterURI     string        `yaml:"master_uri"`     // ROS Master URI
+	RobotID       string        `yaml:"robot_id"`       // 机器人标识ID
+	UpdateInterval time.Duration `yaml:"update_interval"` // 数据更新间隔
+
+	// 监控配置
+	MonitorMotors     bool `yaml:"monitor_motors"`     // 是否监控电机状态
+	MonitorBattery    bool `yaml:"monitor_battery"`    // 是否监控电池状态
+	MonitorLidar      bool `yaml:"monitor_lidar"`      // 是否监控激光雷达
+	MonitorIMU        bool `yaml:"monitor_imu"`        // 是否监控IMU
+	MonitorNavigation bool `yaml:"monitor_navigation"` // 是否监控导航状态
+	MonitorCamera     bool `yaml:"monitor_camera"`     // 是否监控相机
+
+	// 话题过滤配置
+	TopicWhitelist []string `yaml:"topic_whitelist"` // 话题白名单
+	TopicBlacklist []string `yaml:"topic_blacklist"` // 话题黑名单
+
+	// 告警阈值
+	MaxMotorTemp      float64 `yaml:"max_motor_temp"`      // 电机最高温度阈值 (°C)
+	MaxBatteryTemp    float64 `yaml:"max_battery_temp"`    // 电池最高温度阈值 (°C)
+	MinBatteryVoltage float64 `yaml:"min_battery_voltage"` // 电池最低电压阈值 (V)
+	MinBatterySOC     float64 `yaml:"min_battery_soc"`     // 电池最低电量阈值 (%)
+	MaxLinearVelocity float64 `yaml:"max_linear_velocity"` // 最大线性速度阈值 (m/s)
+	MaxAngularVelocity float64 `yaml:"max_angular_velocity"` // 最大角速度阈值 (rad/s)
 }
 
 // DefaultConfig 返回默认配置
@@ -241,6 +270,32 @@ func DefaultConfig() *Config {
 				MaxLoadWeight:          100.0, // 负载警告阈值100kg（最大120kg）
 				MaxSpeed:               5.0,   // 速度警告阈值5m/s（最大6m/s）
 				CollisionRiskThreshold: 0.8,   // 碰撞风险阈值0.8
+			},
+			ROSMasterX3: ROSMasterX3CollectorConfig{
+				Enabled:        false, // 默认禁用，只在ROSMaster-X3机器人上启用
+				MasterURI:      "http://localhost:11311",
+				RobotID:        "rosmaster-x3-001",
+				UpdateInterval: 5 * time.Second,
+
+				// 监控配置
+				MonitorMotors:     true,
+				MonitorBattery:    true,
+				MonitorLidar:      true,
+				MonitorIMU:        true,
+				MonitorNavigation: true,
+				MonitorCamera:     true,
+
+				// 话题过滤配置
+				TopicWhitelist: []string{},
+				TopicBlacklist: []string{"/rosout", "/rosout_agg", "/tf_static"},
+
+				// 告警阈值
+				MaxMotorTemp:       75.0,  // 电机最高温度75°C
+				MaxBatteryTemp:     60.0,  // 电池最高温度60°C
+				MinBatteryVoltage:  11.0,  // 电池最低电压11V
+				MinBatterySOC:      20.0,  // 电池最低电量20%
+				MaxLinearVelocity:  2.0,   // 最大线性速度2m/s
+				MaxAngularVelocity: 2.0,   // 最大角速度2rad/s
 			},
 		},
 	}

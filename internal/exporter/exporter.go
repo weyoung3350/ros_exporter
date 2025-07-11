@@ -17,12 +17,13 @@ import (
 
 // Exporter 统一监控导出器
 type Exporter struct {
-	config          *config.Config
-	vmClient        *client.VMClient
-	systemCollector *collectors.SystemCollector
-	bmsCollector    *collectors.BMSCollector
-	rosCollector    *collectors.ROSCollector
-	b2Collector     *collectors.B2Collector
+	config              *config.Config
+	vmClient            *client.VMClient
+	systemCollector     *collectors.SystemCollector
+	bmsCollector        *collectors.BMSCollector
+	rosCollector        *collectors.ROSCollector
+	b2Collector         *collectors.B2Collector
+	rosmasterX3Collector *collectors.ROSMasterX3Collector
 
 	// HTTP服务器
 	httpServer *http.Server
@@ -42,15 +43,17 @@ func New(cfg *config.Config) (*Exporter, error) {
 	bmsCollector := collectors.NewBMSCollector(&cfg.Collectors.BMS, cfg.Exporter.Instance)
 	rosCollector := collectors.NewROSCollector(&cfg.Collectors.ROS, cfg.Exporter.Instance)
 	b2Collector := collectors.NewB2Collector(&cfg.Collectors.B2, cfg.Exporter.Instance)
+	rosmasterX3Collector := collectors.NewROSMasterX3Collector(&cfg.Collectors.ROSMasterX3, cfg.Exporter.Instance)
 
 	exporter := &Exporter{
-		config:          cfg,
-		vmClient:        vmClient,
-		systemCollector: systemCollector,
-		bmsCollector:    bmsCollector,
-		rosCollector:    rosCollector,
-		b2Collector:     b2Collector,
-		running:         false,
+		config:              cfg,
+		vmClient:            vmClient,
+		systemCollector:     systemCollector,
+		bmsCollector:        bmsCollector,
+		rosCollector:        rosCollector,
+		b2Collector:         b2Collector,
+		rosmasterX3Collector: rosmasterX3Collector,
+		running:             false,
 	}
 
 	// 初始化HTTP服务器
@@ -158,6 +161,13 @@ func (e *Exporter) collectAndPush(ctx context.Context) error {
 		log.Printf("收集B2指标失败: %v", err)
 	} else {
 		allMetrics = append(allMetrics, b2Metrics...)
+	}
+
+	// 收集ROSMaster-X3指标
+	if rosmasterX3Metrics, err := e.rosmasterX3Collector.Collect(ctx); err != nil {
+		log.Printf("收集ROSMaster-X3指标失败: %v", err)
+	} else {
+		allMetrics = append(allMetrics, rosmasterX3Metrics...)
 	}
 
 	// 添加Exporter自身的指标
