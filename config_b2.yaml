@@ -1,0 +1,79 @@
+# ros_exporter B2 现场联调配置（AGX-Thor + B2 1401）
+#
+# 用法：
+#   export CYCLONEDDS_URI=file:///home/robot/cyclonedds.xml
+#   ./ros_exporter -config config_b2.yaml
+
+exporter:
+  push_interval: 10s
+  instance: "thor-b2-1401"
+  log_level: "info"
+  http_server:
+    enabled: true
+    port: 9100
+    address: "127.0.0.1"
+    endpoints: ["health", "status", "metrics"]
+
+victoria_metrics:
+  # 联调阶段：暂时指向不存在的端点。push 会失败但不影响 b2 collector 工作；
+  # 要看 metric 直接 curl http://127.0.0.1:9100/metrics
+  endpoint: "http://127.0.0.1:8428/api/v1/import/prometheus"
+  timeout: 3s
+  extra_labels:
+    job: "ros_exporter"
+    robot: "b2-1401"
+  retry:
+    max_retries: 1
+    retry_delay: 1s
+    max_delay: 5s
+    backoff_rate: 2.0
+
+collectors:
+  system:
+    enabled: true
+    collectors: ["cpu", "memory", "disk", "network", "load"]
+    proc_path: "/proc"
+    sys_path: "/sys"
+    rootfs_path: "/"
+    temperature:
+      enabled: true
+      sensors_cmd: "sensors"
+      temp_source: "thermal_zone"
+      thermal_zone: "/sys/class/thermal/thermal_zone0/temp"
+    network:
+      enabled: true
+      interfaces: ["enP2p1s0", "wlP1p1s0"]
+      bandwidth_enabled: true
+      exclude_loopback: true
+    process:
+      enabled: false
+
+  bms:
+    # BMS collector 关掉——B2 collector 已经输出 b2_battery_* 详细指标，避免重复占用 DDS subscriber
+    enabled: false
+
+  ros:
+    enabled: false
+
+  b2:
+    enabled: true
+    data_source: "dds"
+    robot_id: "b2-1401"
+    network_interface: "enP2p1s0"
+    update_interval: 5s
+
+    low_state_topic: "rt/lowstate"
+    sport_state_topic: "rt/sportmodestate"
+
+    dds_stale_threshold: 5s
+    dds_connect_timeout: 5s
+    dds_reconnect_min_gap: 2s
+
+    monitor_motion: true
+    monitor_imu: true
+    monitor_joints: true
+    monitor_battery: true
+    monitor_safety: true
+
+  rosmaster_x3:
+    enabled: false

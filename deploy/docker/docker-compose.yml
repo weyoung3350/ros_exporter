@@ -1,0 +1,101 @@
+# 监控全栈：ros_exporter + VictoriaMetrics + Grafana
+#
+# 部署目标：Jetson AGX Thor（ARM64 + Ubuntu 24.04）
+#
+# 用法：
+#   cd deploy/docker
+#   docker compose up -d
+#   docker compose logs -f
+#
+# 访问：
+#   - Grafana:        http://<thor-ip>:3000   (admin / admin，首次登录改密码)
+#   - VictoriaMetrics http://<thor-ip>:8428
+#   - ros_exporter:   http://localhost:9100/metrics  (host network，仅本机)
+#
+# 跨机部署：docker save victoriametrics:tag grafana:tag | gzip | scp 后 docker load
+# ros_exporter 容器挂载主机 binary，跨机时需要先把 binary 和 .so 同步过去（或后续做完整 Dockerfile）
+
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.110.0
+    container_name: vm
+    restart: unless-stopped
+    ports:
+      - "8428:8428"
+    volumes:
+      - vm-data:/storage
+    command:
+      - "--storageDataPath=/storage"
+      - "--retentionPeriod=30d"  # 保留 30 天
+      - "--httpListenAddr=:8428"
+    # 注：VictoriaMetrics 镜像基于 distroless，没有 wget/curl 可做 healthcheck。
+    # VM 启动只需 ~50ms，比 Grafana 快得多——用 depends_on: service_started 即可。
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=
+      # Grafana 默认绑 0.0.0.0:3000，方便从 macOS 浏览器访问 thor:3000
+      # NO_PROXY：Thor 上 docker daemon 继承了 sing-box 代理（127.0.0.1:7890），
+      # Grafana 容器查 datasource 时会走代理→连不上 vm 容器，必须显式排除。
+      - NO_PROXY=vm,localhost,127.0.0.1
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - https_proxy=
+      - no_proxy=vm,localhost,127.0.0.1
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      victoriametrics:
+        condition: service_started
+
+  ros_exporter:
+    # 用 minimal Ubuntu 镜像 + 挂载主机 binary 和共享库，不重打镜像，保留快速迭代。
+    # 完整镜像化（多阶段 Dockerfile builder/runtime）作为后续独立任务。
+    image: ubuntu:24.04
+    container_name: ros_exporter
+    restart: unless-stopped
+    network_mode: host  # 必须：DDS 多播 + 读 enP2p1s0 网卡
+    pid: host           # 让 system collector 看到主机进程（如果需要进程监控）
+    volumes:
+      # 主机已编好的 binary 和库
+      - /home/robot/ros_exporter/ros_exporter:/usr/local/bin/ros_exporter:ro
+      - /usr/local/lib/libddscxx.so.0:/usr/local/lib/libddscxx.so.0:ro
+      - /usr/local/lib/libddsc.so.0:/usr/local/lib/libddsc.so.0:ro
+      # 配置
+      - ./ros_exporter/config.yaml:/etc/ros_exporter/config.yaml:ro
+      - /home/robot/cyclonedds.xml:/etc/cyclonedds.xml:ro
+      # 系统指标采集（system collector 需要）
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - CYCLONEDDS_URI=file:///etc/cyclonedds.xml
+      - LD_LIBRARY_PATH=/usr/local/lib
+      # Thor 全局代理防御（同 grafana 备注）
+      - NO_PROXY=localhost,127.0.0.1,vm
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - http_proxy=
+      - https_proxy=
+      - no_proxy=localhost,127.0.0.1,vm
+    command:
+      - /usr/local/bin/ros_exporter
+      - -config
+      - /etc/ros_exporter/config.yaml
+    depends_on:
+      victoriametrics:
+        condition: service_started
+
+volumes:
+  vm-data:
+  grafana-data:

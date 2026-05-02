@@ -1,0 +1,43 @@
+# Makefile.b2 — 编译 B2 unitree_sdk2 C wrapper 静态库
+#
+# 用法（在 Thor 或同等 ARM64 Linux 装好 unitree_sdk2 之后）：
+#   make -f Makefile.b2          # 编出 libb2sdk.a
+#   make -f Makefile.b2 clean
+#   make -f Makefile.b2 test     # 编小测试程序，验证 wrapper 能链接
+#
+# 输出 libb2sdk.a 给 internal/b2/dds_cgo.go 用 #cgo LDFLAGS 链接。
+
+CXX      := g++
+CXXFLAGS := -std=c++17 -fPIC -O2 -Wall \
+            -I/usr/local/include \
+            -I/usr/local/include/ddscxx
+AR       := ar
+ARFLAGS  := rcs
+
+SRC      := b2_sdk.cpp
+OBJ      := $(SRC:.cpp=.o)
+TARGET   := libb2sdk.a
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(AR) $(ARFLAGS) $@ $^
+	@echo "✓ libb2sdk.a 已生成（$(shell du -h $@ 2>/dev/null | cut -f1))"
+
+%.o: %.cpp b2_sdk.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# 简单的链接测试：只验证 unitree_sdk2 + cyclonedds 库存在且符号可解析
+# 不需要 B2 实物在线
+test: $(TARGET) test_b2sdk.cpp
+	$(CXX) -std=c++17 -I. test_b2sdk.cpp -L. -lb2sdk \
+	    -L/usr/local/lib -lunitree_sdk2 \
+	    -lddscxx -lddsc \
+	    -lpthread -ldl -lm \
+	    -o test_b2sdk
+	@echo "✓ test_b2sdk 编译通过"
+
+clean:
+	rm -f $(OBJ) $(TARGET) test_b2sdk
+
+.PHONY: all clean test

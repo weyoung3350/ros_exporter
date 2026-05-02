@@ -7,23 +7,29 @@ import (
 	"strings"
 	"time"
 
+	"ros_exporter/internal/b2"
 	"ros_exporter/internal/client"
 	"ros_exporter/internal/config"
-	"ros_exporter/internal/types"
+	"ros_exporter/internal/g1"
 )
 
-// BMSData BMS数据结构
+// BMSData 跨机器人统一的电池数据结构。
+//
+// G1/Go2/B2 各自的 SDK 暴露的字段结构不同，BMS collector 把它们归一化到这个结构，
+// 让 robot_battery_* 系列指标对所有机器人保持一致的标签 schema 和指标名。
+//
+// B2 路径下 Health 字段不可填（codex C-2：BmsState IDL 没有 health 字段）：保留 0 值。
 type BMSData struct {
-	Voltage     float64 // 电压 (V)
-	Current     float64 // 电流 (A)
-	SOC         float64 // 电量百分比 (%)
-	Temperature float64 // 温度 (°C)
-	Power       float64 // 功率 (W)
+	Voltage     float64 // 电压 V
+	Current     float64 // 电流 A
+	SOC         float64 // 电量百分比 0-100
+	Temperature float64 // 温度 °C
+	Power       float64 // 功率 W = V × A
 	Cycles      float64 // 充电周期
-	Health      float64 // 电池健康度 (%)
+	Health      float64 // 电池健康度 % (B2 路径下不可用，为 0)
 }
 
-// BMSInterface BMS接口
+// BMSInterface 内部接口：把不同传输层（unitree SDK / serial / canbus / mock）的电池读取归一化。
 type BMSInterface interface {
 	Connect() error
 	Disconnect() error
@@ -31,7 +37,10 @@ type BMSInterface interface {
 	IsConnected() bool
 }
 
-// BMSCollector BMS指标收集器
+// BMSCollector 输出 robot_battery_* 系列指标。
+//
+// 对外 metric 名不变，仅底层数据来源改为 internal/b2 和 internal/g1 的 DataSource 抽象。
+// 这是为保证 G1 现有部署"零行为变化"硬约束（plan v3 第 3.10 节）。
 type BMSCollector struct {
 	config    *config.BMSCollectorConfig
 	instance  string
@@ -39,14 +48,12 @@ type BMSCollector struct {
 	connected bool
 }
 
-// NewBMSCollector 创建新的BMS收集器
 func NewBMSCollector(cfg *config.BMSCollectorConfig, instance string) *BMSCollector {
 	collector := &BMSCollector{
 		config:   cfg,
 		instance: instance,
 	}
 
-	// 根据配置创建对应的BMS接口
 	switch cfg.InterfaceType {
 	case "unitree_sdk":
 		collector.bmsIface = NewUnitreeSDKInterface(cfg)
@@ -55,20 +62,17 @@ func NewBMSCollector(cfg *config.BMSCollectorConfig, instance string) *BMSCollec
 	case "canbus":
 		collector.bmsIface = NewCANInterface(cfg)
 	default:
-		// 如果接口类型未知，使用模拟接口
 		collector.bmsIface = NewMockInterface(cfg)
 	}
 
 	return collector
 }
 
-// Collect 收集BMS指标
 func (c *BMSCollector) Collect(ctx context.Context) ([]client.Metric, error) {
 	if !c.config.Enabled {
 		return nil, nil
 	}
 
-	// 确保连接
 	if !c.connected {
 		if err := c.bmsIface.Connect(); err != nil {
 			return nil, fmt.Errorf("连接BMS失败: %w", err)
@@ -76,19 +80,16 @@ func (c *BMSCollector) Collect(ctx context.Context) ([]client.Metric, error) {
 		c.connected = true
 	}
 
-	// 检查连接状态
 	if !c.bmsIface.IsConnected() {
 		c.connected = false
 		return nil, fmt.Errorf("BMS连接断开")
 	}
 
-	// 读取BMS数据
 	bmsData, err := c.bmsIface.ReadBMSData()
 	if err != nil {
 		return nil, fmt.Errorf("读取BMS数据失败: %w", err)
 	}
 
-	// 转换为指标
 	now := time.Now()
 	labels := map[string]string{
 		"instance":   c.instance,
@@ -96,55 +97,17 @@ func (c *BMSCollector) Collect(ctx context.Context) ([]client.Metric, error) {
 		"interface":  c.config.InterfaceType,
 	}
 
-	metrics := []client.Metric{
-		{
-			Name:      "robot_battery_voltage_volts",
-			Value:     bmsData.Voltage,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_current_amperes",
-			Value:     bmsData.Current,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_soc_percent",
-			Value:     bmsData.SOC,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_temperature_celsius",
-			Value:     bmsData.Temperature,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_power_watts",
-			Value:     bmsData.Power,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_cycles_total",
-			Value:     bmsData.Cycles,
-			Labels:    labels,
-			Timestamp: now,
-		},
-		{
-			Name:      "robot_battery_health_percent",
-			Value:     bmsData.Health,
-			Labels:    labels,
-			Timestamp: now,
-		},
-	}
-
-	return metrics, nil
+	return []client.Metric{
+		{Name: "robot_battery_voltage_volts", Value: bmsData.Voltage, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_current_amperes", Value: bmsData.Current, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_soc_percent", Value: bmsData.SOC, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_temperature_celsius", Value: bmsData.Temperature, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_power_watts", Value: bmsData.Power, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_cycles_total", Value: bmsData.Cycles, Labels: labels, Timestamp: now},
+		{Name: "robot_battery_health_percent", Value: bmsData.Health, Labels: labels, Timestamp: now},
+	}, nil
 }
 
-// Close 关闭BMS收集器
 func (c *BMSCollector) Close() error {
 	if c.connected && c.bmsIface != nil {
 		c.connected = false
@@ -153,34 +116,39 @@ func (c *BMSCollector) Close() error {
 	return nil
 }
 
-// UnitreeSDKInterface 宇树SDK接口实现
+// UnitreeSDKInterface 用宇树官方 SDK 读电池（G1 / Go2 / B2 通用入口）。
+//
+// 内部按 robotType 分派到对应包的 DataSource 抽象。
 type UnitreeSDKInterface struct {
 	config    *config.BMSCollectorConfig
 	connected bool
-	robotType string       // "go2", "g1", "b2", "auto"
-	g1SDK     *types.G1SDK // G1 SDK实例
-	b2SDK     *types.B2SDK // B2 SDK实例
+	robotType string
+
+	g1DS g1.G1DataSource // G1 数据源（按 BMSCollectorConfig.G1DataSource 选 sdk/mock）
+	b2DS b2.B2DataSource // B2 数据源（始终用 dds 数据源，因为 BMS 选 unitree_sdk 即意味着要真实 SDK）
 }
 
 func NewUnitreeSDKInterface(cfg *config.BMSCollectorConfig) *UnitreeSDKInterface {
 	return &UnitreeSDKInterface{
 		config:    cfg,
 		connected: false,
-		robotType: "auto", // 自动检测机器人类型
+		robotType: "auto",
 	}
 }
 
 func (u *UnitreeSDKInterface) Connect() error {
-	// 检测机器人类型
 	if u.robotType == "auto" {
-		detectedType, err := u.detectRobotType()
+		detected, err := u.detectRobotType()
 		if err != nil {
 			return fmt.Errorf("检测机器人类型失败: %w", err)
 		}
-		u.robotType = detectedType
+		u.robotType = detected
+	}
+	if u.config != nil && u.config.RobotType != "" && u.config.RobotType != "auto" {
+		// 显式配置覆盖自动检测
+		u.robotType = u.config.RobotType
 	}
 
-	// 根据机器人类型初始化SDK连接
 	switch u.robotType {
 	case "g1":
 		return u.connectG1()
@@ -197,8 +165,6 @@ func (u *UnitreeSDKInterface) Disconnect() error {
 	if !u.connected {
 		return nil
 	}
-
-	// 根据机器人类型断开连接
 	switch u.robotType {
 	case "g1":
 		return u.disconnectG1()
@@ -216,8 +182,6 @@ func (u *UnitreeSDKInterface) ReadBMSData() (*BMSData, error) {
 	if !u.connected {
 		return nil, fmt.Errorf("SDK未连接")
 	}
-
-	// 根据机器人类型读取BMS数据
 	switch u.robotType {
 	case "g1":
 		return u.readG1BMSData()
@@ -234,30 +198,21 @@ func (u *UnitreeSDKInterface) IsConnected() bool {
 	return u.connected
 }
 
-// detectRobotType 检测机器人类型
+// detectRobotType 三步走：hostname 关键字 → /etc/robot_type → 默认 go2
 func (u *UnitreeSDKInterface) detectRobotType() (string, error) {
-	// 方法1: 检查系统信息
-	if robotType := u.detectFromSystemInfo(); robotType != "" {
-		return robotType, nil
+	if t := u.detectFromSystemInfo(); t != "" {
+		return t, nil
 	}
-
-	// 方法2: 检查网络接口特征
-	if robotType := u.detectFromNetworkConfig(); robotType != "" {
-		return robotType, nil
+	if t := u.detectFromNetworkConfig(); t != "" {
+		return t, nil
 	}
-
-	// 方法3: 尝试连接不同的SDK接口
-	if robotType := u.detectFromSDKResponse(); robotType != "" {
-		return robotType, nil
+	if t := u.detectFromSDKResponse(); t != "" {
+		return t, nil
 	}
-
-	// 默认假设为Go2（向后兼容）
 	return "go2", nil
 }
 
-// detectFromSystemInfo 从系统信息检测机器人类型
 func (u *UnitreeSDKInterface) detectFromSystemInfo() string {
-	// 检查主机名
 	if hostname, err := os.Hostname(); err == nil {
 		hostname = strings.ToLower(hostname)
 		if strings.Contains(hostname, "g1") {
@@ -270,149 +225,55 @@ func (u *UnitreeSDKInterface) detectFromSystemInfo() string {
 			return "b2"
 		}
 	}
-
-	// 检查/etc/robot_type文件（如果存在）
 	if data, err := os.ReadFile("/etc/robot_type"); err == nil {
-		robotType := strings.TrimSpace(strings.ToLower(string(data)))
-		if robotType == "g1" || robotType == "go2" || robotType == "b2" {
-			return robotType
+		t := strings.TrimSpace(strings.ToLower(string(data)))
+		if t == "g1" || t == "go2" || t == "b2" {
+			return t
 		}
 	}
-
 	return ""
 }
 
-// detectFromNetworkConfig 从网络配置检测机器人类型
-func (u *UnitreeSDKInterface) detectFromNetworkConfig() string {
-	// G1和Go2可能有不同的默认网络配置
-	// 这里可以根据实际情况添加检测逻辑
-	return ""
-}
+func (u *UnitreeSDKInterface) detectFromNetworkConfig() string { return "" }
+func (u *UnitreeSDKInterface) detectFromSDKResponse() string   { return "" }
 
-// detectFromSDKResponse 从SDK响应检测机器人类型
-func (u *UnitreeSDKInterface) detectFromSDKResponse() string {
-	// 尝试连接并从响应数据推断机器人类型
-	// 这里可以根据实际SDK API的差异来实现
-	return ""
-}
+// ---------- G1 ----------
 
-// connectG1 连接G1机器人
 func (u *UnitreeSDKInterface) connectG1() error {
-	// 创建G1 SDK实例
-	if u.g1SDK == nil {
-		u.g1SDK = types.NewG1SDK()
+	if u.g1DS == nil {
+		ds, err := g1.New(u.config)
+		if err != nil {
+			return fmt.Errorf("创建 G1 数据源失败: %w", err)
+		}
+		u.g1DS = ds
 	}
-
-	// 初始化SDK
-	sdkConfigPath := ""
-	if u.config.SDKConfigPath != "" {
-		sdkConfigPath = u.config.SDKConfigPath
+	if err := u.g1DS.Connect(); err != nil {
+		return fmt.Errorf("连接 G1 失败: %w", err)
 	}
-
-	if err := u.g1SDK.Initialize(sdkConfigPath); err != nil {
-		return fmt.Errorf("初始化G1 SDK失败: %w", err)
-	}
-
-	// 连接到G1机器人
-	if err := u.g1SDK.Connect(); err != nil {
-		return fmt.Errorf("连接G1机器人失败: %w", err)
-	}
-
 	u.connected = true
 	return nil
 }
 
-// connectGo2 连接Go2机器人
-func (u *UnitreeSDKInterface) connectGo2() error {
-	// TODO: 实现Go2特定的SDK连接逻辑
-	// 这里需要调用宇树Go2 SDK的初始化函数
-	// 可以参考现有的C++实现：
-	// - unitree::robot::ChannelFactory::Instance()->Init(0, networkInterface)
-	// - 订阅LowState消息
-
-	u.connected = true
-	return nil
-}
-
-// connectB2 连接B2机器人
-func (u *UnitreeSDKInterface) connectB2() error {
-	// 创建B2 SDK实例
-	if u.b2SDK == nil {
-		u.b2SDK = types.NewB2SDK()
-	}
-
-	// 初始化SDK
-	sdkConfigPath := ""
-	if u.config.SDKConfigPath != "" {
-		sdkConfigPath = u.config.SDKConfigPath
-	}
-
-	// 设置网络接口
-	networkInterface := "eth0" // 默认接口
-	if u.config.NetworkInterface != "" {
-		networkInterface = u.config.NetworkInterface
-	}
-
-	if err := u.b2SDK.Initialize(sdkConfigPath, networkInterface); err != nil {
-		return fmt.Errorf("初始化B2 SDK失败: %w", err)
-	}
-
-	// 连接到B2机器人
-	if err := u.b2SDK.Connect(); err != nil {
-		return fmt.Errorf("连接B2机器人失败: %w", err)
-	}
-
-	u.connected = true
-	return nil
-}
-
-// disconnectG1 断开G1连接
 func (u *UnitreeSDKInterface) disconnectG1() error {
-	if u.g1SDK != nil {
-		if err := u.g1SDK.Disconnect(); err != nil {
-			return fmt.Errorf("断开G1连接失败: %w", err)
-		}
-		u.g1SDK.Cleanup()
-		u.g1SDK = nil
+	if u.g1DS != nil {
+		_ = u.g1DS.Disconnect()
+		_ = u.g1DS.Close()
+		u.g1DS = nil
 	}
 	u.connected = false
 	return nil
 }
 
-// disconnectGo2 断开Go2连接
-func (u *UnitreeSDKInterface) disconnectGo2() error {
-	// TODO: 实现Go2断开连接逻辑
-	u.connected = false
-	return nil
-}
-
-// disconnectB2 断开B2连接
-func (u *UnitreeSDKInterface) disconnectB2() error {
-	if u.b2SDK != nil {
-		if err := u.b2SDK.Disconnect(); err != nil {
-			return fmt.Errorf("断开B2连接失败: %w", err)
-		}
-		u.b2SDK.Cleanup()
-		u.b2SDK = nil
-	}
-	u.connected = false
-	return nil
-}
-
-// readG1BMSData 读取G1电池数据
+// readG1BMSData 字段映射保持与改造前 internal/types/g1_types.go 完全一致——
+// G1 是真实集成不是 stub，必须零行为变化（plan v3 第 3.10 节）。
 func (u *UnitreeSDKInterface) readG1BMSData() (*BMSData, error) {
-	// 使用真实的G1 SDK获取电池数据
-	if u.g1SDK == nil {
-		return nil, fmt.Errorf("G1 SDK未初始化")
+	if u.g1DS == nil {
+		return nil, fmt.Errorf("G1 数据源未初始化")
 	}
-
-	// 从G1 SDK获取电池状态
-	status, err := u.g1SDK.GetBatteryStatus()
+	status, err := u.g1DS.GetBatteryStatus()
 	if err != nil {
-		return nil, fmt.Errorf("获取G1电池状态失败: %w", err)
+		return nil, fmt.Errorf("获取 G1 电池状态失败: %w", err)
 	}
-
-	// 转换为BMSData格式
 	return &BMSData{
 		Voltage:     status.Voltage,
 		Current:     status.Current,
@@ -424,13 +285,21 @@ func (u *UnitreeSDKInterface) readG1BMSData() (*BMSData, error) {
 	}, nil
 }
 
-// readGo2BMSData 读取Go2电池数据
-func (u *UnitreeSDKInterface) readGo2BMSData() (*BMSData, error) {
-	// TODO: 实现从Go2读取真实BMS数据
-	// 可以参考现有C++实现中的数据获取逻辑
-	// state_msg.bms_state().soc() 等
+// ---------- Go2（仍是 stub，不在本次改造范围）----------
 
-	// 临时返回Go2模拟数据
+func (u *UnitreeSDKInterface) connectGo2() error {
+	// TODO: 实际 Go2 SDK 连接
+	u.connected = true
+	return nil
+}
+
+func (u *UnitreeSDKInterface) disconnectGo2() error {
+	u.connected = false
+	return nil
+}
+
+func (u *UnitreeSDKInterface) readGo2BMSData() (*BMSData, error) {
+	// TODO: 接通 Go2 真实 SDK；当前返回模拟数据
 	return &BMSData{
 		Voltage:     24.5,
 		Current:     -2.3,
@@ -442,141 +311,161 @@ func (u *UnitreeSDKInterface) readGo2BMSData() (*BMSData, error) {
 	}, nil
 }
 
-// readB2BMSData 读取B2电池数据
+// ---------- B2 ----------
+
+// b2ConfigFromBMS 从 BMSCollectorConfig 派生一个最小可用的 B2CollectorConfig，
+// 让 b2.New 能创建 DataSource。BMS 只读电池，不需要 sport state，但 b2 wrapper 内部
+// 会同时订阅 lowstate 和 sportmodestate（codex W-1）。这里给默认 topic 名。
+//
+// 现场需现场覆盖 topic 名时，应在 collectors.B2 配置块中改（B2 collector 共享同名拓扑）。
+// BMS 路径默认走真实 DDS（与 BMS 选 unitree_sdk 的语义一致），
+// macOS 测试时通过 RobotType≠"b2" 避开此分支。
+func b2ConfigFromBMS(bms *config.BMSCollectorConfig) *config.B2CollectorConfig {
+	return &config.B2CollectorConfig{
+		DataSource:         "dds",
+		NetworkInterface:   bms.NetworkInterface,
+		UpdateInterval:     bms.UpdateInterval,
+		LowStateTopic:      "rt/lowstate",
+		SportStateTopic:    "rt/sportmodestate",
+		DDSConnectTimeout:  5 * time.Second,
+		DDSStaleThreshold:  5 * time.Second,
+		DDSReconnectMinGap: 2 * time.Second,
+	}
+}
+
+func (u *UnitreeSDKInterface) connectB2() error {
+	if u.b2DS == nil {
+		ds, err := b2.New(b2ConfigFromBMS(u.config))
+		if err != nil {
+			return fmt.Errorf("创建 B2 数据源失败: %w", err)
+		}
+		u.b2DS = ds
+	}
+	if err := u.b2DS.Connect(); err != nil {
+		return fmt.Errorf("连接 B2 失败: %w", err)
+	}
+	u.connected = true
+	return nil
+}
+
+func (u *UnitreeSDKInterface) disconnectB2() error {
+	if u.b2DS != nil {
+		_ = u.b2DS.Disconnect()
+		_ = u.b2DS.Close()
+		u.b2DS = nil
+	}
+	u.connected = false
+	return nil
+}
+
+// readB2BMSData 字段映射：codex C-2 指出 BmsState IDL 不报 health/total_voltage，
+// 总电压由 sum(cell_vol) 算，Health 字段保持 0（不假装能读到）。
 func (u *UnitreeSDKInterface) readB2BMSData() (*BMSData, error) {
-	// 使用真实的B2 SDK获取电池数据
-	if u.b2SDK == nil {
-		return nil, fmt.Errorf("B2 SDK未初始化")
+	if u.b2DS == nil {
+		return nil, fmt.Errorf("B2 数据源未初始化")
 	}
-
-	// 从B2 SDK获取电池状态
-	status, err := u.b2SDK.GetBatteryStatus()
+	snap, err := u.b2DS.GetSnapshot()
 	if err != nil {
-		return nil, fmt.Errorf("获取B2电池状态失败: %w", err)
+		return nil, fmt.Errorf("获取 B2 snapshot 失败: %w", err)
 	}
+	if snap == nil || snap.LowState == nil {
+		return nil, fmt.Errorf("B2 LowState 尚未收到首包")
+	}
+	bat := &snap.LowState.Battery
 
-	// 转换为BMSData格式（B2的电池规格）
+	// 总电压 mV → V（sum 单体电压）
+	var sumMv uint64
+	for _, v := range bat.CellVoltages {
+		sumMv += uint64(v)
+	}
+	voltage := float64(sumMv) / 1000.0
+
+	// 电流 mA → A（带符号）
+	current := float64(bat.Current) / 1000.0
+
+	// 温度多路求平均
+	temp := averageTemperature(bat)
+
 	return &BMSData{
-		Voltage:     status.Voltage,                  // 58V标称电压
-		Current:     status.Current,                  // 电流
-		SOC:         status.Capacity,                 // 电量百分比
-		Temperature: status.Temperature,              // 电池温度
-		Power:       status.Voltage * status.Current, // 功率
-		Cycles:      float64(status.CycleCount),      // 充电周期
-		Health:      float64(status.HealthStatus),    // 健康度
+		Voltage:     voltage,
+		Current:     current,
+		SOC:         float64(bat.SOC),
+		Temperature: temp,
+		Power:       voltage * current,
+		Cycles:      float64(bat.Cycle),
+		Health:      0, // SDK 不报，留 0（codex C-2）
 	}, nil
 }
 
-// SerialInterface 串口接口实现
-type SerialInterface struct {
-	config *config.BMSCollectorConfig
+// averageTemperature 把 BQNTC[2] 和 MCUNTC[2] 4 路温度求平均。
+// 都为 0 时返回 0；都为有效值时是简单算术平均。
+//
+// 字段是 uint8（IDL 实际类型），负温度场景无法表示——B2 工业机器人不会在零下运行，
+// 0 视为"未读到"哨兵值更稳妥。
+func averageTemperature(bat *b2.Battery) float64 {
+	var sum uint
+	count := 0
+	for _, t := range bat.BQNTC {
+		if t != 0 {
+			sum += uint(t)
+			count++
+		}
+	}
+	for _, t := range bat.MCUNTC {
+		if t != 0 {
+			sum += uint(t)
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return float64(sum) / float64(count)
 }
+
+// ---------- Serial / CAN / Mock（保持原样，不在改造范围）----------
+
+type SerialInterface struct{ config *config.BMSCollectorConfig }
 
 func NewSerialInterface(cfg *config.BMSCollectorConfig) *SerialInterface {
 	return &SerialInterface{config: cfg}
 }
-
-func (s *SerialInterface) Connect() error {
-	// TODO: 实现串口连接逻辑
-	// 使用 github.com/tarm/serial 或类似库
-	return nil
-}
-
-func (s *SerialInterface) Disconnect() error {
-	// TODO: 实现串口断开连接逻辑
-	return nil
-}
-
+func (s *SerialInterface) Connect() error    { return nil }
+func (s *SerialInterface) Disconnect() error { return nil }
+func (s *SerialInterface) IsConnected() bool { return true }
 func (s *SerialInterface) ReadBMSData() (*BMSData, error) {
-	// TODO: 实现从串口读取BMS数据
-	// 需要根据具体的BMS协议解析数据
-	return &BMSData{
-		Voltage:     24.2,
-		Current:     -1.8,
-		SOC:         82.3,
-		Temperature: 33.8,
-		Power:       43.56,
-		Cycles:      156,
-		Health:      94.2,
-	}, nil
+	return &BMSData{Voltage: 24.2, Current: -1.8, SOC: 82.3, Temperature: 33.8, Power: 43.56, Cycles: 156, Health: 94.2}, nil
 }
 
-func (s *SerialInterface) IsConnected() bool {
-	// TODO: 实现连接状态检查
-	return true
-}
-
-// CANInterface CAN总线接口实现
-type CANInterface struct {
-	config *config.BMSCollectorConfig
-}
+type CANInterface struct{ config *config.BMSCollectorConfig }
 
 func NewCANInterface(cfg *config.BMSCollectorConfig) *CANInterface {
 	return &CANInterface{config: cfg}
 }
-
-func (c *CANInterface) Connect() error {
-	// TODO: 实现CAN总线连接逻辑
-	// 使用 github.com/angelodlfrtr/go-can 或类似库
-	return nil
-}
-
-func (c *CANInterface) Disconnect() error {
-	// TODO: 实现CAN总线断开连接逻辑
-	return nil
-}
-
+func (c *CANInterface) Connect() error    { return nil }
+func (c *CANInterface) Disconnect() error { return nil }
+func (c *CANInterface) IsConnected() bool { return true }
 func (c *CANInterface) ReadBMSData() (*BMSData, error) {
-	// TODO: 实现从CAN总线读取BMS数据
-	// 需要根据具体的CAN协议解析数据
-	return &BMSData{
-		Voltage:     24.8,
-		Current:     -3.1,
-		SOC:         78.9,
-		Temperature: 36.5,
-		Power:       76.88,
-		Cycles:      89,
-		Health:      97.1,
-	}, nil
+	return &BMSData{Voltage: 24.8, Current: -3.1, SOC: 78.9, Temperature: 36.5, Power: 76.88, Cycles: 89, Health: 97.1}, nil
 }
 
-func (c *CANInterface) IsConnected() bool {
-	// TODO: 实现连接状态检查
-	return true
-}
-
-// MockInterface 模拟接口实现（用于测试）
-type MockInterface struct {
-	config *config.BMSCollectorConfig
-}
+type MockInterface struct{ config *config.BMSCollectorConfig }
 
 func NewMockInterface(cfg *config.BMSCollectorConfig) *MockInterface {
 	return &MockInterface{config: cfg}
 }
-
-func (m *MockInterface) Connect() error {
-	return nil
-}
-
-func (m *MockInterface) Disconnect() error {
-	return nil
-}
-
+func (m *MockInterface) Connect() error    { return nil }
+func (m *MockInterface) Disconnect() error { return nil }
+func (m *MockInterface) IsConnected() bool { return true }
 func (m *MockInterface) ReadBMSData() (*BMSData, error) {
-	// 返回模拟的BMS数据，包含一些变化
 	baseTime := time.Now().Unix()
-
 	return &BMSData{
 		Voltage:     24.0 + float64(baseTime%10)/10.0,
 		Current:     -2.0 + float64(baseTime%5)/5.0,
 		SOC:         80.0 + float64(baseTime%20),
 		Temperature: 30.0 + float64(baseTime%15),
 		Power:       48.0 + float64(baseTime%20),
-		Cycles:      100 + float64(baseTime%50),
+		Cycles:      float64(100 + baseTime%50),
 		Health:      95.0 + float64(baseTime%5),
 	}, nil
-}
-
-func (m *MockInterface) IsConnected() bool {
-	return true
 }

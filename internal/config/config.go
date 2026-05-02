@@ -113,6 +113,11 @@ type BMSCollectorConfig struct {
 	DevicePath       string        `yaml:"device_path"`       // 串口设备路径
 	BaudRate         int           `yaml:"baud_rate"`         // 串口波特率
 	CanInterface     string        `yaml:"can_interface"`     // CAN接口名称
+
+	// G1DataSource 选择 G1 数据源实现："sdk"（CGO 调真实 unitree SDK）| "mock"（确定性模拟数据）
+	// 空字符串时按构建模式自动选：cgo 编译 → sdk，nocgo 编译 → mock。
+	// 向后兼容：旧 config.yaml 不写此字段时行为与改造前一致。
+	G1DataSource string `yaml:"g1_data_source"`
 }
 
 // ROSCollectorConfig ROS收集器配置
@@ -126,25 +131,39 @@ type ROSCollectorConfig struct {
 	ScrapeInterval time.Duration `yaml:"scrape_interval"`
 }
 
-// B2CollectorConfig B2机器狗专用收集器配置
+// B2CollectorConfig B2 四足机器人专用收集器配置。
+//
+// 数据源选择由 DataSource 字段决定，不再依赖 SDKConfigPath（v3 移除）。
+// 告警阈值字段（MaxJointTemp 等）已移除，改由 VictoriaMetrics/Grafana alert rules 负责，
+// 避免在 exporter 和告警系统中双重定义阈值。
 type B2CollectorConfig struct {
-	Enabled          bool          `yaml:"enabled"`
-	RobotID          string        `yaml:"robot_id"`          // 机器人标识ID
-	NetworkInterface string        `yaml:"network_interface"` // 网络接口名称
-	SDKConfigPath    string        `yaml:"sdk_config_path"`   // SDK配置文件路径
-	UpdateInterval   time.Duration `yaml:"update_interval"`   // 数据更新间隔
+	Enabled bool `yaml:"enabled"`
 
-	// 监控配置
-	MonitorJoints  bool `yaml:"monitor_joints"`  // 是否监控关节状态
-	MonitorSensors bool `yaml:"monitor_sensors"` // 是否监控传感器状态
-	MonitorMotion  bool `yaml:"monitor_motion"`  // 是否监控运动状态
-	MonitorSafety  bool `yaml:"monitor_safety"`  // 是否监控安全状态
+	// DataSource 选择 B2 数据源实现："dds"（CGO + unitree_sdk2 直连，仅 cgo+linux）| "mock"。
+	// 空字符串默认 "mock"（向后兼容）。
+	// macOS / 无 SDK 环境配置 "dds" 启动会报错（dds_stub.go 返回明确错误，不静默 mock）。
+	DataSource string `yaml:"data_source"`
 
-	// 告警阈值
-	MaxJointTemp           float64 `yaml:"max_joint_temp"`           // 关节最高温度阈值 (°C)
-	MaxLoadWeight          float64 `yaml:"max_load_weight"`          // 最大负载阈值 (kg)
-	MaxSpeed               float64 `yaml:"max_speed"`                // 最大速度阈值 (m/s)
-	CollisionRiskThreshold float64 `yaml:"collision_risk_threshold"` // 碰撞风险阈值
+	RobotID          string        `yaml:"robot_id"`          // 机器人标识 ID（写入 metric label）
+	NetworkInterface string        `yaml:"network_interface"` // DDS 通信网卡（AGX-Thor 现场默认 enP2p1s0）
+	UpdateInterval   time.Duration `yaml:"update_interval"`   // collector 拉取 snapshot 的间隔
+
+	// LowStateTopic / SportStateTopic：DDS topic 名，现场用 ros2 topic list 验证后可覆盖默认值。
+	// B2 的 sportmodestate 在 unitree_sdk2 B2 示例中没直接订阅过，可能是 lf/sportmodestate 等变体。
+	LowStateTopic   string `yaml:"low_state_topic"`
+	SportStateTopic string `yaml:"sport_state_topic"`
+
+	// DDS 自愈参数：wrapper 守护线程检测每个 topic 的 last_seen，超 DDSStaleThreshold 视为断流并重建。
+	DDSStaleThreshold  time.Duration `yaml:"dds_stale_threshold"`   // 默认 5s
+	DDSConnectTimeout  time.Duration `yaml:"dds_connect_timeout"`   // 默认 5s，首包等待超时
+	DDSReconnectMinGap time.Duration `yaml:"dds_reconnect_min_gap"` // 默认 2s，重建 subscriber 最小间隔（防抖）
+
+	// 监控开关：collector 按这些选择性输出指标。snapshot 中字段不可用时也不会输出对应指标。
+	MonitorMotion  bool `yaml:"monitor_motion"`
+	MonitorIMU     bool `yaml:"monitor_imu"`
+	MonitorJoints  bool `yaml:"monitor_joints"`
+	MonitorBattery bool `yaml:"monitor_battery"` // 是否输出 b2_battery_* 详细指标（cell voltage 等）。robot_battery_* 跨机器人统一指标始终走 BMS collector
+	MonitorSafety  bool `yaml:"monitor_safety"`
 }
 
 // ROSMasterX3CollectorConfig ROSMaster-X3收集器配置
@@ -254,22 +273,24 @@ func DefaultConfig() *Config {
 				ScrapeInterval: 5 * time.Second,
 			},
 			B2: B2CollectorConfig{
-				Enabled:          false, // 默认禁用，只在B2机器人上启用
+				Enabled:          false,    // 默认禁用，只在 B2 机器人上启用
+				DataSource:       "mock",   // 默认 mock，避免无 DDS 环境因尝试连真 SDK 而启动失败
 				RobotID:          "b2-001",
-				NetworkInterface: "eth0",
+				NetworkInterface: "enP2p1s0", // AGX-Thor 现场主网卡（非 eth0）
 				UpdateInterval:   5 * time.Second,
 
-				// 监控配置
-				MonitorJoints:  true,
-				MonitorSensors: true,
-				MonitorMotion:  true,
-				MonitorSafety:  true,
+				LowStateTopic:   "rt/lowstate",
+				SportStateTopic: "rt/sportmodestate",
 
-				// 告警阈值
-				MaxJointTemp:           80.0,  // 关节温度上限80°C
-				MaxLoadWeight:          100.0, // 负载警告阈值100kg（最大120kg）
-				MaxSpeed:               5.0,   // 速度警告阈值5m/s（最大6m/s）
-				CollisionRiskThreshold: 0.8,   // 碰撞风险阈值0.8
+				DDSStaleThreshold:  5 * time.Second,
+				DDSConnectTimeout:  5 * time.Second,
+				DDSReconnectMinGap: 2 * time.Second,
+
+				MonitorMotion:  true,
+				MonitorIMU:     true,
+				MonitorJoints:  true,
+				MonitorBattery: true,
+				MonitorSafety:  true,
 			},
 			ROSMasterX3: ROSMasterX3CollectorConfig{
 				Enabled:        false, // 默认禁用，只在ROSMaster-X3机器人上启用

@@ -1,0 +1,853 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 100,
+      "type": "stat",
+      "title": "DDS 连接状态",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_data_source_connected{robot_id=\"b2-1401\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "断开",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "已连接",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 101,
+      "type": "stat",
+      "title": "电池 SOC",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_battery_soc_percent{robot_id=\"b2-1401\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "yellow",
+                "value": 40
+              },
+              {
+                "color": "green",
+                "value": 60
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 102,
+      "type": "stat",
+      "title": "急停状态",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_emergency_stop{robot_id=\"b2-1401\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "正常",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "急停",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 103,
+      "type": "stat",
+      "title": "单体压差",
+      "description": "电池单体电压最大值减最小值。健康电池应 < 50mV，> 100mV 表示有均衡问题。",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_battery_cell_voltage_diff_millivolts{robot_id=\"b2-1401\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 104,
+      "type": "stat",
+      "title": "DDS 收包延迟（lowstate）",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_dds_topic_last_seen_seconds{topic=\"lowstate\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 105,
+      "type": "stat",
+      "title": "DDS 重连次数",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "targets": [
+        {
+          "expr": "b2_dds_reconnect_total{robot_id=\"b2-1401\"}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 200,
+      "type": "timeseries",
+      "title": "关节温度（12 路）",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "b2_joint_temperature_celsius{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{leg}}_{{joint}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 5
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 60
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 201,
+      "type": "timeseries",
+      "title": "关节扭矩（N·m）",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "targets": [
+        {
+          "expr": "b2_joint_torque_newton_meters{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{leg}}_{{joint}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Nm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max",
+            "min"
+          ]
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 300,
+      "type": "timeseries",
+      "title": "电池电流（放电为负）",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "b2_battery_current_milliamperes{robot_id=\"b2-1401\"} / 1000",
+          "refId": "A",
+          "legendFormat": "电流 A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "amp",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 301,
+      "type": "timeseries",
+      "title": "电池总电压",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "b2_battery_total_voltage_millivolts{robot_id=\"b2-1401\"} / 1000",
+          "refId": "A",
+          "legendFormat": "总电压 V",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "volt",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 302,
+      "type": "timeseries",
+      "title": "电池单体电压（14 节有效）",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 12
+      },
+      "targets": [
+        {
+          "expr": "b2_battery_cell_voltage_millivolts{robot_id=\"b2-1401\"}",
+          "legendFormat": "cell_{{cell_id}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 400,
+      "type": "timeseries",
+      "title": "IMU 角速度（rad/s）",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "b2_imu_angular_velocity_radians_per_second{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{axis}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rad/s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 401,
+      "type": "timeseries",
+      "title": "IMU 线加速度（m/s²）",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "b2_imu_linear_acceleration_meters_per_second_squared{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{axis}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "accMS2",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 402,
+      "type": "timeseries",
+      "title": "足端力（4 路）",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "b2_foot_force{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{leg}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 5
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 500,
+      "type": "timeseries",
+      "title": "机身速度（m/s）",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "b2_body_velocity_meters_per_second{robot_id=\"b2-1401\"}",
+          "legendFormat": "{{axis}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 501,
+      "type": "timeseries",
+      "title": "运动模式 / 步态原码",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "b2_sport_mode{robot_id=\"b2-1401\"}",
+          "legendFormat": "mode",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        },
+        {
+          "expr": "b2_sport_gait{robot_id=\"b2-1401\"}",
+          "legendFormat": "gait",
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 600,
+      "type": "timeseries",
+      "title": "Thor CPU 使用率",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "targets": [
+        {
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",instance=\"thor-b2-1401\"}[1m])) by (instance) * 100)",
+          "legendFormat": "CPU %",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    },
+    {
+      "id": 601,
+      "type": "timeseries",
+      "title": "Thor 温度（thermal_zone0）",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "targets": [
+        {
+          "expr": "node_hwmon_temp_celsius{instance=\"thor-b2-1401\"}",
+          "legendFormat": "{{chip}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1
+          }
+        }
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      }
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "b2",
+    "unitree",
+    "robot"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "B2 机器人总览",
+  "uid": "b2-overview",
+  "version": 1,
+  "weekStart": ""
+}

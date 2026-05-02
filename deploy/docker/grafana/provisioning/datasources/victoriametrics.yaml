@@ -1,0 +1,18 @@
+# Grafana 数据源 provisioning：把 VictoriaMetrics 作为 Prometheus 兼容数据源
+#
+# Grafana 启动时自动加载，无需在 UI 手动配置。
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    # 固定 UID，让 dashboard JSON 能稳定引用，跨重新部署不变
+    uid: victoriametrics
+    type: prometheus
+    access: proxy
+    # 容器内 grafana 通过 docker compose 服务名 "vm" 访问 VM
+    url: http://vm:8428
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "5s"
+      httpMethod: GET

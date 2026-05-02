@@ -1,5 +1,70 @@
 # CLAUDE.md
 
+> **最近一次更新**：2026-05-02
+
+## 当前状态
+
+### 主线：宇树 B2 工业级四足适配（已联调成功）
+
+- **目标载体**：Jetson AGX Thor (ARM64 + Ubuntu 24.04) + 宇树 B2 编号 1401
+- **数据流**：B2 主控 → unitree_sdk2 DDS → C wrapper（`internal/sdk/unitree/b2_sdk.cpp`）→ cgo → `internal/b2.B2DataSource` → `internal/collectors/B2Collector` → push VictoriaMetrics → Grafana
+- **部署形态**：Thor 上 `docker compose` 跑三服务（VM + Grafana + ros_exporter 容器，挂载主机 binary 和共享库）
+- **指标范围**：12 关节温度/扭矩/位置/速度/mode/lost、IMU 姿态/角速度/加速度、电池 SOC/cell voltage/NTC、足端力、运动状态、DDS 自检 4 路
+- **Grafana 入口**：`http://<thor-ip>:3000` admin/admin → 文件夹 B2 → "B2 机器人总览"（18 panel）
+
+### 关键设计文档（跨电脑接手必读）
+
+- `docs/superpowers/specs/2026-05-02-b2-adaptation-design.md` —— 完整方案 v3，含 codex 评审反馈逐条落地
+- `docs/CODEX_REVIEW_REQUEST.md` / `docs/CODEX_REVIEW_REPORT.md` —— 第三方独立技术评审
+- `docs/对话记录.md` —— 里程碑追加日志
+
+### 架构（B2 适配引入的新分层）
+
+```
+internal/
+├── b2/                        ← B2 数据源抽象（DataSource interface + DDS/mock 实现）
+├── g1/                        ← G1 同步重构（与 B2 对称，零行为变化约束）
+├── sdk/unitree/
+│   ├── b2_sdk.h / b2_sdk.cpp  ← unitree_sdk2 的 C ABI wrapper（含 DDS 自愈守护线程）
+│   └── Makefile.b2            ← 编 libb2sdk.a 静态库
+├── collectors/
+│   ├── b2.go                  ← 调 b2.GetSnapshot() 输出 b2_* 指标
+│   └── bms.go                 ← B2/G1 分支转发到对应 DataSource
+└── config/
+    └── config.go              ← B2CollectorConfig 含 DataSource/topic/staleness 字段
+deploy/docker/                 ← docker-compose + grafana provisioning + B2 dashboard
+```
+
+### Build tag 矩阵
+
+| 平台 | tag | B2 数据源 | G1 数据源 |
+|------|-----|----------|-----------|
+| macOS 默认 | `cgo,darwin` | dds_stub.go（明确报错）| sdk_stub.go（明确报错） |
+| Linux + 无 SDK | `cgo,linux` | dds_stub.go | sdk_stub.go（要 `g1sdk` tag）|
+| Thor + 装好 unitree_sdk2 | `cgo,linux` | dds_cgo.go ✓ | sdk_stub.go（默认） |
+| Linux + libg1sdk + 显式启用 | `cgo,linux,g1sdk` | dds_cgo.go ✓ | sdk_cgo.go ✓ |
+
+mock 数据源始终可用（任何 tag 组合）。
+
+### 容器栈启停
+
+```bash
+cd ~/ros_exporter/deploy/docker
+docker compose up -d        # 启动
+docker compose down         # 停止（保留 vm-data / grafana-data 卷）
+docker compose logs -f
+docker compose restart ros_exporter   # 改 binary 后重启
+```
+
+### 已闭环参考
+
+- B2 关节顺序确认：FR/FL/RR/RL × hip/thigh/calf（用 b2_stand_example.cpp 的 `_targetPos_4` 验证）
+- BmsState IDL 字段实测：cell_vol[15] 但 B2 实际有效 14 节，第 15 节是预留槽（min/diff 计算跳过 0）
+- 容器代理坑：Thor docker daemon 继承 sing-box 全局代理，所有容器需 NO_PROXY 防御
+- ros_exporter 二进制依赖：libddscxx.so.0 + libddsc.so.0（在 /usr/local/lib，已加 ld.so.conf.d）
+
+---
+
 ======设备介绍======
 	ROSMASTER X3 标准版
 	树莓派5-8GB
